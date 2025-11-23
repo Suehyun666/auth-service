@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package auth.event;
+
+option java_multiple_files = true;
+option java_package = "com.hts.generated.grpc";
+option java_outer_classname = "AuthProto";
+
+enum AuthResult {
+  SUCCESS = 0;
+  FAILURE = 1;
+  INVALID_CREDENTIALS = 2;
+  ACCOUNT_NOT_FOUND = 3;
+  ACCOUNT_SUSPENDED = 4;
+  ACCOUNT_LOCKED = 5;
+  SESSION_NOT_FOUND = 6;
+  SESSION_EXPIRED = 7;
+  INTERNAL_ERROR = 8;
+}
+
+message LoginRequest {
+  int64 account_id = 1;
+  string password = 2;
+  string ip_addr = 3;
+  string user_agent = 4;
+}
+
+message LoginReply {
+  AuthResult code = 1;
+  string session_id = 2;
+  int64 account_id = 3;
+}
+
+message LogoutRequest {
+  string session_id = 1;
+}
+
+message LogoutReply {
+  AuthResult code = 1;
+}
+
+message ValidateSessionRequest {
+  string session_id = 1;
+}
+
+message ValidateSessionReply {
+  AuthResult code = 1;
+  int64 account_id = 2;
+  bool is_valid = 3;
+}
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginReply);
+  rpc Logout(LogoutRequest) returns (LogoutReply);
+  rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionReply);
+}

@@ -1,0 +1,157 @@
+{
+  "title": "Auth Service Real Metrics Dashboard",
+  "uid": "auth-service-real",
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 30,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Data Source",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {}
+      },
+      {
+        "name": "job",
+        "type": "query",
+        "datasource": "${datasource}",
+        "query": "label_values(process_start_time_seconds, job)",
+        "label": "Job",
+        "sort": 1,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Login Request Rate (TPS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "sum(rate(auth_command_latency_seconds_count{job=~\"$job\"}[1m])) by (op)",
+          "legendFormat": "{{op}} Total",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Login Latency (P99 - Slowest 1%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(auth_command_latency_seconds_bucket{job=~\"$job\"}[1m])) by (le, op)) * 1000",
+          "legendFormat": "{{op}} P99",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Login Result (Success vs Fail)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "sum(rate(auth_command_latency_seconds_count{job=~\"$job\", result=\"SUCCESS\"}[1m]))",
+          "legendFormat": "Success",
+          "refId": "A",
+          "color": "green"
+        },
+        {
+          "expr": "sum(rate(auth_command_latency_seconds_count{job=~\"$job\", result!=\"SUCCESS\"}[1m]))",
+          "legendFormat": "{{result}}",
+          "refId": "B",
+          "color": "red"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Kafka Consumer Activity",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "rate(kafka_consumer_node_response_total{job=~\"$job\"}[1m])",
+          "legendFormat": "{{client_id}} (Responses)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(kafka_consumer_node_request_total{job=~\"$job\"}[1m])",
+          "legendFormat": "{{client_id}} (Requests)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Redis Throughput (Ops/sec)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "rate(redis_commands_count_total{job=~\"$job\"}[1m])",
+          "legendFormat": "Commands/sec",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "JVM Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "sum(jvm_memory_used_bytes{job=~\"$job\", area=\"heap\"})",
+          "legendFormat": "Heap Used",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(jvm_memory_used_bytes{job=~\"$job\", area=\"nonheap\"})",
+          "legendFormat": "Non-Heap Used",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Redis Connection Pool Idle",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": "${datasource}",
+      "targets": [
+        {
+          "expr": "redis_pool_idle{job=~\"$job\"}",
+          "legendFormat": "Idle Connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "max": 100, "min": 0 }
+      }
+    }
+  ]
+}
