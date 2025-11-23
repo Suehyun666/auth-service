@@ -14,15 +14,16 @@ message AccountCreatedEvent {
   int64 timestamp = 4;
 }
 
-// Account-service → Auth-service (Status/Delete)
+// Account-service → Auth-service
+message AccountDeletedEvent {
+  int64 account_id = 1;
+  int64 timestamp = 2;
+}
+
+// Auth-service → Account-service (Status)
 message AccountStatusChangedEvent {
   int64 account_id = 1;
   string status = 2; // LOCKED, SUSPENDED, ACTIVE 등
   string reason = 3;
   int64 timestamp = 4;
-}
-
-message AccountDeletedEvent {
-  int64 account_id = 1;
-  int64 timestamp = 2;
 }
