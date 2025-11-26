@@ -72,12 +72,21 @@ jobs:
           echo "📦 Image: ${{ env.DOCKER_IMAGE }}:${{ steps.vars.outputs.GIT_COMMIT }}"
           echo "📦 Image: ${{ env.DOCKER_IMAGE }}:latest"
 
+      # 9. Nomad 서버에 SSH 접속하여 배포 실행
       - name: Deploy to Nomad
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.NOMAD_SERVER_HOST }}
           username: ${{ secrets.NOMAD_SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.NOMAD_SERVER_PORT || 22 }}
+          port: 22
           script: |
+            # 1. 기존 Nomad 파일이 있다면 내용을 업데이트   
+            echo "🚀 Deploying Auth Service to Nomad..."
+            nomad job run \
+              -var="image_tag=${{ steps.vars.outputs.GIT_COMMIT }}" \
+              /opt/nomad-jobs/app/auth.nomad
+
+            nomad job status auth
+            echo "✅ Deployment triggered on Nomad server."
