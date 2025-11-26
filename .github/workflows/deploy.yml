@@ -84,6 +84,7 @@ jobs:
           script: |
             # 1. 기존 Nomad 파일이 있다면 내용을 업데이트   
             echo "🚀 Deploying Auth Service to Nomad..."
+            export NOMAD_ADDR=${{ secrets.NOMAD_INTERNAL_ADDR }}
             nomad job run \
               -var="image_tag=${{ steps.vars.outputs.GIT_COMMIT }}" \
               /opt/nomad-jobs/app/auth.nomad
