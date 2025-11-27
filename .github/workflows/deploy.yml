@@ -19,6 +19,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set Image Tag (short SHA)
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-12)
+          echo "IMAGE_TAG=${SHORT_SHA}" >> $GITHUB_ENV
+          echo "Using IMAGE_TAG=${SHORT_SHA}"
+
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
@@ -30,37 +36,32 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # [1] 태그를 환경변수로 확정 (build-번호)
-      - name: Set Image Tag
-        run: echo "IMAGE_TAG=build-${{ github.run_number }}" >> $GITHUB_ENV
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # [2] Jib 빌드 및 푸시 (환경변수로 태그 강제 주입)
+      # Jib에 우리가 정한 태그(커밋 SHA)를 강제 주입
       - name: Build and Push Docker Image with Jib
-        env:
-          QUARKUS_CONTAINER_IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           ./gradlew build \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.container-image.image=${{ env.DOCKER_IMAGE }} \
+            -Dquarkus.container-image.tag=${{ env.IMAGE_TAG }} \
             -Dquarkus.container-image.additional-tags=latest \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }} \
             -x test --no-daemon
 
-      # [3] 검증: 진짜 태그로 올라갔는지 확인
       - name: Image Details
         run: |
           echo "✅ Docker Image Published:"
           echo "📦 Image: ${{ env.DOCKER_IMAGE }}:${{ env.IMAGE_TAG }}"
+          echo "Also tagged as: latest"
 
-      # [4] Nomad 배포 (위에서 만든 태그 그대로 사용)
+      # main 브랜치 push일 때만 배포
       - name: Deploy to Nomad
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1.0.3
@@ -73,12 +74,11 @@ jobs:
             set -e
             export NOMAD_ADDR=${{ secrets.NOMAD_INTERNAL_ADDR }}
             
-            TARGET_TAG="${{ env.IMAGE_TAG }}"
-            
-            echo "🚀 Deploying Target Tag: $TARGET_TAG"
+            echo "Target Image: ${{ env.DOCKER_IMAGE }}:${{ env.IMAGE_TAG }}"
 
+            # 여기서 image_tag를 auth.nomad에 넘긴다
             nomad job run \
-              -var="image_tag=$TARGET_TAG" \
+              -var="image_tag=${{ env.IMAGE_TAG }}" \
               /opt/nomad-jobs/app/auth.nomad
 
             nomad job status auth
