@@ -30,9 +30,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run tests
-        run: ./gradlew test --no-daemon
-
+      # 절대 변하지 않는 '빌드 번호'를 태그로 확정
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=build-${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -40,25 +40,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-
-      - name: Get Git commit hash
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            REAL_SHA=${{ github.event.pull_request.head.sha }}
-          else
-            REAL_SHA=${{ github.sha }}
-          fi
-          echo "GIT_COMMIT=$(echo $REAL_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
-
-
+      # Jib에게 우리가 만든 태그(build-xx)를 강제로 주입
       - name: Build and Push Docker Image with Jib
         run: |
           ./gradlew build \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.container-image.image=${{ env.DOCKER_IMAGE }} \
-            -Dquarkus.container-image.tag=${{ steps.vars.outputs.GIT_COMMIT }} \
+            -Dquarkus.container-image.tag=${{ env.IMAGE_TAG }} \
             -Dquarkus.container-image.additional-tags=latest \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
             -Dquarkus.container-image.password=${{ secrets.DOCKER_PASSWORD }} \
@@ -67,9 +56,9 @@ jobs:
       - name: Image Details
         run: |
           echo "✅ Docker Image Published:"
-          echo "📦 Image: ${{ env.DOCKER_IMAGE }}:${{ steps.vars.outputs.GIT_COMMIT }}"
+          echo "📦 Image: ${{ env.DOCKER_IMAGE }}:${{ env.IMAGE_TAG }}"
 
-
+      # Nomad에게도 똑같은 태그(build-xx)를 전달
       - name: Deploy to Nomad
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1.0.3
@@ -82,11 +71,11 @@ jobs:
             set -e
             export NOMAD_ADDR=${{ secrets.NOMAD_INTERNAL_ADDR }}
             
-            echo "Target Image Tag: ${{ steps.vars.outputs.GIT_COMMIT }}"
+            echo "Target Image Tag: ${{ env.IMAGE_TAG }}"
 
             nomad job run \
-              -var="image_tag=${{ steps.vars.outputs.GIT_COMMIT }}" \
+              -var="image_tag=${{ env.IMAGE_TAG }}" \
               /opt/nomad-jobs/app/auth.nomad
 
             nomad job status auth
-            echo "✅ Deployment triggered on Nomad server."
+            echo "✅ Deployment triggered."
