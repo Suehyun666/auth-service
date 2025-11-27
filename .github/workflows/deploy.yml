@@ -69,7 +69,7 @@ jobs:
           echo "✅ Docker Image Published:"
           echo "📦 Image: ${{ env.DOCKER_IMAGE }}:${{ steps.vars.outputs.GIT_COMMIT }}"
 
-      # [수정 4] PR 상황에서도 배포 테스트를 할 거라면 if 제거, Main에만 할거면 유지
+
       - name: Deploy to Nomad
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1.0.3
