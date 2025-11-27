@@ -48,7 +48,9 @@ jobs:
       # 6. Git 커밋 해시 추출 (짧은 버전)
       - name: Get Git commit hash
         id: vars
-        run: echo "GIT_COMMIT=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: |
+          # github.sha의 앞 7글자만 잘라서 SHORT_SHA라는 변수로 만듦
+          echo "GIT_COMMIT=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       # 7. Jib를 통한 빌드 및 Docker Hub 푸시
       - name: Build and Push Docker Image with Jib
@@ -82,9 +84,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # 1. 기존 Nomad 파일이 있다면 내용을 업데이트   
-            echo "🚀 Deploying Auth Service to Nomad..."
-            export NOMAD_ADDR=${{ secrets.NOMAD_INTERNAL_ADDR }}
+            set -e
+            export NOMAD_ADDR=http://${{ secrets.NOMAD_INTERNAL_ADDR }}
+            
+            # 디버깅용: 실제 배포하려는 태그가 뭔지 찍어보기
+            echo "Target Image Tag: ${{ steps.vars.outputs.GIT_COMMIT }}"
+
             nomad job run \
               -var="image_tag=${{ steps.vars.outputs.GIT_COMMIT }}" \
               /opt/nomad-jobs/app/auth.nomad
