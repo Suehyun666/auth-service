@@ -48,7 +48,6 @@ jobs:
           ./gradlew build \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
-            -Dquarkus.container-image.image=${{ env.DOCKER_IMAGE }} \
             -Dquarkus.container-image.tag=${{ env.IMAGE_TAG }} \
             -Dquarkus.container-image.additional-tags=latest \
             -Dquarkus.container-image.username=${{ secrets.DOCKER_USERNAME }} \
