@@ -91,10 +91,7 @@ public class AuthCommandService {
                 })
                 .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
                 .flatMap(aid -> redisRepo.saveSessionAtomic(aid, SESSION_TTL_SECONDS)
-                        .onFailure().invoke(e -> LOG.errorf(e, "Redis save failed for account_id=%d", aid))
-                        .onFailure().recoverWithItem(() -> null)
-                        .map(sessionId -> ServiceResult.success(sessionId, aid))
-                )
+                        .map(sessionId -> ServiceResult.success(sessionId, aid)))
                 .invoke(() -> writeRepo.recordLoginHistoryAsync(accountId, "SUCCESS", ip, userAgent, null));
     }
 

@@ -15,7 +15,7 @@ redis.call("DEL", setKey)
 local newSessionId = redis.call("INCR", "session:id_gen")
 local sessionKey = "session:" .. newSessionId
 
-redis.call("SET", sessionKey, accountId, "EX", ttl)
+redis.call("SET", sessionKey, accountId .. "," .. accountId, "EX", ttl)
 redis.call("SADD", setKey, sessionKey)
 redis.call("EXPIRE", setKey, ttl)
 
